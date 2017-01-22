@@ -4,11 +4,12 @@
 
 rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
+-- dbcontainer="db"
 
 
 function drunner_setup()
 -- addconfig(NAME, DESCRIPTION, DEFAULT VALUE, TYPE, REQUIRED)
-   addconfig("PORT","The port to run rocketchat on.","3000","port",true)
+   addconfig("PORT","The port to run rocketchat on.","80","port",true)
 
    addconfig("ROOTURL","The root URL for rocketchat.","http://localhost","string",true)
 
@@ -17,6 +18,7 @@ function drunner_setup()
 
 -- addvolume(NAME, [BACKUP], [EXTERNAL])
    addvolume("drunner-${SERVICENAME}-uploads",true,false)
+   addvolume("drunner-${SERVICENAME}-database",true,false)
 
 end
 
@@ -34,6 +36,7 @@ function start()
       -- fire up the mongodb server.
       result=drun("docker","run",
       "--name",dbcontainer,
+      "-v","drunner-${SERVICENAME}-database:/data/db",
       "-d","mongo:3.0",
       "--smallfiles")
 
@@ -41,12 +44,24 @@ function start()
         print(dsub("Failed to start mongodb."))
       end
 
+      -- wait until it's available
+      result=drun("docker","run","--rm",
+      "--link", dbcontainer.. ":db",
+      "drunner/rocketchat",
+      "/usr/local/bin/waitforit.sh","-h","db","-p","27017","-t","60"
+      )
+
+      if result~=0 then
+        print(dsub("Mongodb didn't seem to start?"))
+      end
+
       -- and rocketchat
       result=drun("docker","run",
       "--name",rccontainer,
       "-p","${PORT}:3000",
+      "-v","drunner-${SERVICENAME}-uploads:/app/uploads",
       "--env","ROOT_URL=${ROOTURL}",
-      "--link",dbcontainer .. ":db",
+      "--link", dbcontainer .. ":db",
       "-d","rocket.chat")
 
       if result~=0 then
