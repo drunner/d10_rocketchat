@@ -46,7 +46,7 @@ function start()
       "--name",rccontainer,
       "-p","${PORT}:80",
       "--env","ROOT_URL=${ROOTURL}",
-      "--link " .. dbcontainer,
+      "--link",dbcontainer .. ":db",
       "-d","rocket.chat")
 
       if result~=0 then
