@@ -81,7 +81,7 @@ function start_rocketchat()
     end
 
     -- fix the uploads directory so the rocketchat user can access it.
-    result=drun("docker","exec","--user","root",rccontainer,"chown","rocketchat:rocketchat","/app/uploads")
+    result=drun("docker","exec","--user","root",rccontainer,"/bin/bash","-c","chown rocketchat:rocketchat /app/uploads")
 
     if result~=0 then
       print(dsub("Failed to fix ownership of uploads directory."))
