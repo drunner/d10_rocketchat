@@ -33,7 +33,7 @@ function start_mongo()
     result=drun("docker","run",
     "--name",dbcontainer,
     "-v", dbvolume .. ":/data/db",
-    "-d","mongo:3.0",
+    "-d","mongo:3.2",
     "--smallfiles",
     "--oplogSize","128",
     "--replSet","rs0")
@@ -54,14 +54,17 @@ function start_mongo()
     end
 
     -- run the mongo replica config
-    result=drun("docker","exec",dbcontainer,
-    "mongo","127.0.0.1/rocketchat","--eval",
+    result=drun("docker","run","--rm",
+    "--link", dbcontainer.. ":db",
+    "mongo:3.2",
+    "mongo","db/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
     )     
     
     if result~=0 then
       print(dsub("Mongodb replica init failed"))
     end
+
 end
 
 function start_rocketchat()
@@ -78,10 +81,12 @@ function start_rocketchat()
     end
 
     -- fix the uploads directory so the rocketchat user can access it.
-    result=drun("docker","exec","--user","root",rccontainer,"/bin/bash","chown","-R","rocketchat","/app/uploads")
+    result=drun("docker","exec","--user","root",rccontainer,"chown","rocketchat:rocketchat","/app/uploads")
+
+    if result~=0 then
+      print(dsub("Failed to fix ownership of uploads directory."))
+    end
 end
-
-
 
 function start()
 --   generate()
