@@ -38,7 +38,9 @@ function start()
       "--name",dbcontainer,
       "-v","drunner-${SERVICENAME}-database:/data/db",
       "-d","mongo:3.0",
-      "--smallfiles")
+      "--smallfiles",
+      "--oplogSize","128",
+      "--replSet","rs0")
 
       if result~=0 then
         print(dsub("Failed to start mongodb."))
@@ -53,6 +55,16 @@ function start()
 
       if result~=0 then
         print(dsub("Mongodb didn't seem to start?"))
+      end
+
+      -- run the mongo replica config
+      result=drun("docker","exec",dbcontainer,
+      "mongo","127.0.0.1/rocketchat","--eval",
+      "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
+      )     
+      
+      if result~=0 then
+        print(dsub("Mongodb replica init failed"))
       end
 
       -- and rocketchat
