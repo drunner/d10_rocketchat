@@ -109,6 +109,17 @@ function update_end()
    end
 end
 
+function backup_start()
+   drun("docker","pause",rccontainer)
+   drun("docker","pause",dbcontainer)
+end
+
+function backup_end()
+   drun("docker","unpause",dbcontainer)
+   drun("docker","unpause",rccontainer)
+end
+
+
 function help()
    return [[
    NAME
