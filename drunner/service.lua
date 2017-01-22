@@ -44,7 +44,7 @@ function start()
       -- and rocketchat
       result=drun("docker","run",
       "--name",rccontainer,
-      "-p","${PORT}:80",
+      "-p","${PORT}:3000",
       "--env","ROOT_URL=${ROOTURL}",
       "--link",dbcontainer .. ":db",
       "-d","rocket.chat")
