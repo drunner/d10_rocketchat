@@ -5,7 +5,6 @@
 rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
 
-ulvolume="drunner-${SERVICENAME}-uploads"
 dbvolume="drunner-${SERVICENAME}-database"
 
 -- dbcontainer="db"
@@ -19,7 +18,6 @@ function drunner_setup()
    addconfig("RUNNING","Is the service running","false","bool",true,false)
 
 -- addvolume(NAME, [BACKUP], [EXTERNAL])
-   addvolume(ulvolume,true,false)
    addvolume(dbvolume,true,false)
 
 end
@@ -72,19 +70,13 @@ function start_rocketchat()
     result=drun("docker","run",
     "--name",rccontainer,
     "-p","${PORT}:3000",
-    "-v", ulvolume .. ":/app/uploads",
     "--link", dbcontainer .. ":db",
+    "--env","MONGO_URL=mongodb://db:27017/rocketchat",
+    "--env","MONGO_OPLOG_URL=mongodb://db:27017/local",
     "-d","rocket.chat")
 
     if result~=0 then
       print(dsub("Failed to start rocketchat on port ${PORT}."))
-    end
-
-    -- fix the uploads directory so the rocketchat user can access it.
-    result=drun("docker","exec","--user","root",rccontainer,"/bin/bash","-c","chown rocketchat:rocketchat /app/uploads")
-
-    if result~=0 then
-      print(dsub("Failed to fix ownership of uploads directory."))
     end
 end
 
