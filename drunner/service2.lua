@@ -6,12 +6,7 @@ rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
 dbvolume="drunner-${SERVICENAME}-database"
 
-function environment()
-   addenv("PORT","80","The port to run rocketchat on.")
-end
-
--- everything past here are functions that can be run from the commandline,
--- e.g. helloworld run
+addenv("PORT","80","The port to run rocketchat on.")
 
 function start_mongo()
     -- fire up the mongodb server.
@@ -68,15 +63,12 @@ function start_rocketchat()
 end
 
 function start()
---   generate()
    if (dockerrunning(dbcontainer)) then
       print("rocketchat is already running.")
    else
       start_mongo()
       start_rocketchat()
    end
-
---   autogenerate()
 end
 
 function stop()
@@ -116,7 +108,7 @@ function help()
 
    SYNOPSIS
       ${SERVICENAME} help             - This help
-      ${SERVICENAME} configure        - Set port and URL
+      ${SERVICENAME} configure port   - Set port
       ${SERVICENAME} start            - Make it go!
       ${SERVICENAME} stop             - Stop it
 
