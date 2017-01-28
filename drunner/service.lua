@@ -4,31 +4,13 @@
 
 rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
-
 dbvolume="drunner-${SERVICENAME}-database"
 
--- dbcontainer="db"
-
-
-function drunner_setup()
--- addconfig(NAME, DESCRIPTION, DEFAULT VALUE, TYPE, REQUIRED)
-   addconfig("PORT","The port to run rocketchat on.","80","port",true)
-
--- not user settable
-   addconfig("RUNNING","Is the service running","false","bool",true,false)
-
--- addvolume(NAME, [BACKUP], [EXTERNAL])
-   addvolume(dbvolume,true,false)
-
-end
-
-
--- everything past here are functions that can be run from the commandline,
--- e.g. helloworld run
+addconfig("PORT","80","The port to run rocketchat on.")
 
 function start_mongo()
     -- fire up the mongodb server.
-    result=drun("docker","run",
+    result=docker("run",
     "--name",dbcontainer,
     "-v", dbvolume .. ":/data/db",
     "-d","mongo:3.2",
@@ -41,7 +23,7 @@ function start_mongo()
     end
 
     -- wait until it's available
-    result=drun("docker","run","--rm",
+    result=docker("run","--rm",
     "--link", dbcontainer.. ":db",
     "drunner/rocketchat",
     "/usr/local/bin/waitforit.sh","-h","db","-p","27017","-t","60"
@@ -52,13 +34,13 @@ function start_mongo()
     end
 
     -- run the mongo replica config
-    result=drun("docker","run","--rm",
+    result=docker("run","--rm",
     "--link", dbcontainer.. ":db",
     "mongo:3.2",
     "mongo","db/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
-    )     
-    
+    )
+
     if result~=0 then
       print(dsub("Mongodb replica init failed"))
     end
@@ -67,7 +49,7 @@ end
 
 function start_rocketchat()
     -- and rocketchat
-    result=drun("docker","run",
+    result=docker("run",
     "--name",rccontainer,
     "-p","${PORT}:3000",
     "--link", dbcontainer .. ":db",
@@ -81,54 +63,50 @@ function start_rocketchat()
 end
 
 function start()
---   generate()
-   dconfig_set("RUNNING","true")
-
-   if (drunning(dbcontainer)) then
+   if (dockerrunning(dbcontainer)) then
       print("rocketchat is already running.")
    else
       start_mongo()
       start_rocketchat()
    end
-
---   autogenerate()
 end
 
 function stop()
-  dconfig_set("RUNNING","false")
-  dstop(dbcontainer)
-  dstop(rccontainer)
+  dockerstop(dbcontainer)
+  dockerstop(rccontainer)
 end
 
-function obliterate_start()
+function uninstall()
    stop()
+   -- we retain the database volume
 end
 
-function uninstall_start()
+function obliterate()
    stop()
+   dockerdeletevolume(dbvolume)
 end
 
-function update_start()
-  dstop(dbcontainer)
-  dstop(rccontainer)
+-- install
+function install()
+  dockerpull("mongo:3.2")
+  dockerpull("rocket.chat")
+  dockercreatevolume(dbvolume)
+--  start() ?
 end
 
-function update_end()
-   if (dconfig_get("RUNNING")=="true") then
-      start()
-   end
+function backup()
+   docker("pause",rccontainer)
+   docker("pause",dbcontainer)
+
+   dockerbackup(dbvolume)
+
+   docker("unpause",dbcontainer)
+   docker("unpause",rccontainer)
 end
 
-function backup_start()
-   drun("docker","pause",rccontainer)
-   drun("docker","pause",dbcontainer)
+function restore()
+   dockerrestore(dbvolume)
 end
-
-function backup_end()
-   drun("docker","unpause",dbcontainer)
-   drun("docker","unpause",rccontainer)
-end
-
 
 function help()
    return [[
@@ -137,7 +115,7 @@ function help()
 
    SYNOPSIS
       ${SERVICENAME} help             - This help
-      ${SERVICENAME} configure        - Set port and URL
+      ${SERVICENAME} configure port   - Set port
       ${SERVICENAME} start            - Make it go!
       ${SERVICENAME} stop             - Stop it
 
