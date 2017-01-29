@@ -6,6 +6,7 @@ rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
 dbvolume="drunner-${SERVICENAME}-database"
 
+-- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("PORT","80","The port to run rocketchat on.")
 
 function start_mongo()
@@ -19,7 +20,7 @@ function start_mongo()
     "--replSet","rs0")
 
     if result~=0 then
-      print(dsub("Failed to start mongodb."))
+      print("Failed to start mongodb.")
     end
 
     -- wait until it's available
@@ -30,7 +31,7 @@ function start_mongo()
     )
 
     if result~=0 then
-      print(dsub("Mongodb didn't seem to start?"))
+      print("Mongodb didn't seem to start?")
     end
 
     -- run the mongo replica config
@@ -42,7 +43,7 @@ function start_mongo()
     )
 
     if result~=0 then
-      print(dsub("Mongodb replica init failed"))
+      print("Mongodb replica init failed")
     end
 
 end
@@ -58,7 +59,7 @@ function start_rocketchat()
     "-d","rocket.chat")
 
     if result~=0 then
-      print(dsub("Failed to start rocketchat on port ${PORT}."))
+      print("Failed to start rocketchat on port ${PORT}.")
     end
 end
 
