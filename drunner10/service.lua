@@ -23,17 +23,10 @@ function start_mongo()
       print("Failed to start mongodb.")
     end
 
---NEED DRUNNER COMMAND FOR THIS!
-    -- wait until it's available
-    --result=docker("run","--rm",
-    --"--link", dbcontainer.. ":db",
-    --"drunner/rocketchat",
-    --"/usr/local/bin/waitforit.sh","-h","db","-p","27017","-t","60"
-    --)
-
---    if result~=0 then
---      print("Mongodb didn't seem to start?")
---    end
+-- Wait for port 27017 to come up in dbcontainer.
+    if not dockerwait(dbcontainer, "27017") then
+      print("Mongodb didn't seem to start?")
+    end
 
     -- run the mongo replica config
     result=docker("run","--rm",
