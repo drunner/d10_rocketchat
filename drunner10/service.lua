@@ -4,7 +4,9 @@
 
 rccontainer="drunner-${SERVICENAME}-rocketchat"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
+caddycontainer="drunner-${SERVICENAME}-caddy"
 dbvolume="drunner-${SERVICENAME}-database"
+certvolume="drunner-${SERVICENAME}-certvolume"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("PORT","80","The port to run rocketchat on.")
@@ -46,7 +48,7 @@ function start_rocketchat()
     -- and rocketchat
     result=docker("run",
     "--name",rccontainer,
-    "-p","${PORT}:3000",
+    "-p","80:3000",
     "--link", dbcontainer .. ":db",
     "--env","MONGO_URL=mongodb://db:27017/rocketchat",
     "--env","MONGO_OPLOG_URL=mongodb://db:27017/local",
@@ -57,18 +59,27 @@ function start_rocketchat()
     end
 end
 
+function start_caddy()
+  result=docker("run",
+    "--name",caddycontainer,
+    "-p","${PORT}:443",
+    "-v", certvolume .. ":/root/.caddy",
+  )
+
 function start()
    if (dockerrunning(dbcontainer)) then
       print("rocketchat is already running.")
    else
       start_mongo()
       start_rocketchat()
+      start_caddy()
    end
 end
 
 function stop()
   dockerstop(dbcontainer)
   dockerstop(rccontainer)
+  dockerstop(caddycontainer)
 end
 
 function uninstall()
@@ -79,13 +90,16 @@ end
 function obliterate()
    stop()
    dockerdeletevolume(dbvolume)
+   dockerdeletevolume(certvolume)
 end
 
 -- install
 function install()
   dockerpull("mongo:3.2")
   dockerpull("rocket.chat")
+  dockerpull("zzrot/alpine-caddy")
   dockercreatevolume(dbvolume)
+  dockercreatevolume(certvolume)
 --  start() ?
 end
 
@@ -94,6 +108,7 @@ function backup()
    docker("pause",dbcontainer)
 
    dockerbackup(dbvolume)
+   dockerbackup(certvolume)
 
    docker("unpause",dbcontainer)
    docker("unpause",rccontainer)
@@ -101,6 +116,7 @@ end
 
 function restore()
    dockerrestore(dbvolume)
+   dockerrestore(certvolume)
 end
 
 function help()
