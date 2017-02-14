@@ -7,14 +7,17 @@ dbcontainer="drunner-${SERVICENAME}-mongodb"
 caddycontainer="drunner-${SERVICENAME}-caddy"
 dbvolume="drunner-${SERVICENAME}-database"
 certvolume="drunner-${SERVICENAME}-certvolume"
+network="drunner-${SERVICENAME}-network"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
-addconfig("PORT","80","The port to run rocketchat on.")
+addconfig("PORT","443","The port to run rocketchat on.")
+addconfig("SUBNETTRIO","10.200.77","First three parts of ip quad. Must be different for each running rocketchat instance.")
 
 function start_mongo()
     -- fire up the mongodb server.
     result=docker("run",
     "--name",dbcontainer,
+    "--network=" .. network ,
     "-v", dbvolume .. ":/data/db",
     "-d","mongo:3.2",
     "--smallfiles",
@@ -32,9 +35,10 @@ function start_mongo()
 
     -- run the mongo replica config
     result=docker("run","--rm",
-    "--link", dbcontainer.. ":db",
+    "--network=" .. network ,
+    "--ip=${SUBNETTRIO}.10",
     "mongo:3.2",
-    "mongo","db/rocketchat","--eval",
+    "mongo",dbcontainer .. "/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
     )
 
@@ -49,9 +53,10 @@ function start_rocketchat()
     result=docker("run",
     "--name",rccontainer,
     "-p","80:3000",
-    "--link", dbcontainer .. ":db",
-    "--env","MONGO_URL=mongodb://db:27017/rocketchat",
-    "--env","MONGO_OPLOG_URL=mongodb://db:27017/local",
+    "--network=" .. network ,
+    "--ip=${SUBNETTRIO}.11",
+    "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
+    "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
     "-d","rocket.chat")
 
     if result~=0 then
@@ -62,9 +67,16 @@ end
 function start_caddy()
   result=docker("run",
     "--name",caddycontainer,
+    "--network=" .. network ,
+    "--ip=${SUBNETTRIO}.12",
     "-p","${PORT}:443",
     "-v", certvolume .. ":/root/.caddy",
   )
+
+-- bridge to outside world.
+   docker("network","connect","bridge",caddycontainer)
+
+end
 
 function start()
    if (dockerrunning(dbcontainer)) then
@@ -91,6 +103,7 @@ function obliterate()
    stop()
    dockerdeletevolume(dbvolume)
    dockerdeletevolume(certvolume)
+   docker("network","rm",network)
 end
 
 -- install
@@ -100,6 +113,7 @@ function install()
   dockerpull("zzrot/alpine-caddy")
   dockercreatevolume(dbvolume)
   dockercreatevolume(certvolume)
+  docker("network","create","--subnet=${SUBNETTRIO}.0/24","--gateway=${SUBNETTRIO}.1",network)
 --  start() ?
 end
 
@@ -122,7 +136,7 @@ end
 function help()
    return [[
    NAME
-      ${SERVICENAME} - Run a rocket.chat server on the given port.
+      ${SERVICENAME} - Run a rocket.chat server on port ${PORT}.
 
    SYNOPSIS
       ${SERVICENAME} help             - This help
