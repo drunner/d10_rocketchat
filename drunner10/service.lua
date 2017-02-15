@@ -32,7 +32,7 @@ function start_mongo()
     end
 
 -- Wait for port 27017 to come up in dbcontainer (30s timeout on the given network)
-    if not dockerwait(dbcontainer, "27017", 30, network) then
+    if not dockerwait(dbcontainer, "27017") then
       print("Mongodb didn't seem to start?")
     end
 
