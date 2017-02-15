@@ -31,8 +31,8 @@ function start_mongo()
       print("Failed to start mongodb.")
     end
 
--- Wait for port 27017 to come up in dbcontainer.
-    if not dockerwait(dbcontainer, "27017") then
+-- Wait for port 27017 to come up in dbcontainer (30s timeout on the given network)
+    if not dockerwait(dbcontainer, "27017", 30, network) then
       print("Mongodb didn't seem to start?")
     end
 
@@ -86,7 +86,7 @@ function start_caddy()
 -- docker run --rm -p 443:443 -e EMAIL="j@842.be" -e CERT_HOST="dev" -e SERVICE_HOST=dev -e SERVICE_PORT=80 -e MODE="fake" j842/caddy
 
 -- bridge to outside world.
-   docker("network","connect","bridge",caddycontainer)
+--   docker("network","connect","bridge",caddycontainer)
 
 end
 
@@ -108,14 +108,15 @@ end
 
 function uninstall()
    stop()
+   docker("netowrk","rm",network)
    -- we retain the database volume
 end
 
 function obliterate()
    stop()
+   docker("netowrk","rm",network)
    dockerdeletevolume(dbvolume)
    dockerdeletevolume(certvolume)
-   docker("network","rm",network)
 end
 
 -- install
