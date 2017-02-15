@@ -11,7 +11,10 @@ network="drunner-${SERVICENAME}-network"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("PORT","443","The port to run rocketchat on.")
-addconfig("SUBNETTRIO","10.200.77","First three parts of ip quad. Must be different for each running rocketchat instance.")
+addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
+addconfig("EMAIL","","LetsEncrypt email")
+addconfig("HOSTNAME","","Hostname for the rocket.chat service")
+
 
 function start_mongo()
     -- fire up the mongodb server.
@@ -36,7 +39,6 @@ function start_mongo()
     -- run the mongo replica config
     result=docker("run","--rm",
     "--network=" .. network ,
-    "--ip=${SUBNETTRIO}.10",
     "mongo:3.2",
     "mongo",dbcontainer .. "/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
@@ -49,12 +51,10 @@ function start_mongo()
 end
 
 function start_rocketchat()
-    -- and rocketchat
+    -- and rocketchat on port 3000
     result=docker("run",
     "--name",rccontainer,
-    "-p","80:3000",
     "--network=" .. network ,
-    "--ip=${SUBNETTRIO}.11",
     "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
     "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
     "-d","rocket.chat")
@@ -68,10 +68,22 @@ function start_caddy()
   result=docker("run",
     "--name",caddycontainer,
     "--network=" .. network ,
-    "--ip=${SUBNETTRIO}.12",
     "-p","${PORT}:443",
     "-v", certvolume .. ":/root/.caddy",
+    "-e","MODE=${MODE}",
+    "-e","EMAIL=${EMAIL}",
+    "-e","CERT_HOST=${HOSTNAME}",
+    "-e","SERVICE_HOST="..rccontainer,
+    "-e","SERVICE_PORT=3000",
+    "-d",
+    "j842/caddy"
   )
+
+    if result~=0 then
+      print("Failed to start caddy on port ${PORT}.")
+    end
+
+-- docker run --rm -p 443:443 -e EMAIL="j@842.be" -e CERT_HOST="dev" -e SERVICE_HOST=dev -e SERVICE_PORT=80 -e MODE="fake" j842/caddy
 
 -- bridge to outside world.
    docker("network","connect","bridge",caddycontainer)
@@ -113,7 +125,7 @@ function install()
   dockerpull("zzrot/alpine-caddy")
   dockercreatevolume(dbvolume)
   dockercreatevolume(certvolume)
-  docker("network","create","--subnet=${SUBNETTRIO}.0/24","--gateway=${SUBNETTRIO}.1",network)
+  docker("network","create",network)
 --  start() ?
 end
 
@@ -131,6 +143,9 @@ end
 function restore()
    dockerrestore(dbvolume)
    dockerrestore(certvolume)
+
+to do: set mode to fake for safety!
+
 end
 
 function help()
