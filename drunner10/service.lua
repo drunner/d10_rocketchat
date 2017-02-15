@@ -144,8 +144,8 @@ function restore()
    dockerrestore(dbvolume)
    dockerrestore(certvolume)
 
-to do: set mode to fake for safety!
-
+-- set mode to fake for safety!
+   dconfig_set("MODE","fake")
 end
 
 function help()
