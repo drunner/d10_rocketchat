@@ -122,7 +122,7 @@ end
 function install()
   dockerpull("mongo:3.2")
   dockerpull("rocket.chat")
-  dockerpull("zzrot/alpine-caddy")
+  dockerpull("j842/caddy")
   dockercreatevolume(dbvolume)
   dockercreatevolume(certvolume)
   docker("network","create",network)
