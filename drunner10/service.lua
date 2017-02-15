@@ -108,13 +108,13 @@ end
 
 function uninstall()
    stop()
-   docker("netowrk","rm",network)
+   docker("network","rm",network)
    -- we retain the database volume
 end
 
 function obliterate()
    stop()
-   docker("netowrk","rm",network)
+   docker("network","rm",network)
    dockerdeletevolume(dbvolume)
    dockerdeletevolume(certvolume)
 end
