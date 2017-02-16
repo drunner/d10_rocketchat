@@ -29,11 +29,13 @@ function start_mongo()
 
     if result~=0 then
       print("Failed to start mongodb.")
+      os.exit(1)
     end
 
 -- Wait for port 27017 to come up in dbcontainer (30s timeout on the given network)
     if not dockerwait(dbcontainer, "27017") then
       print("Mongodb didn't seem to start?")
+      os.exit(1)
     end
 
     -- run the mongo replica config
@@ -46,6 +48,7 @@ function start_mongo()
 
     if result~=0 then
       print("Mongodb replica init failed")
+      os.exit(1)
     end
 
 end
@@ -61,7 +64,14 @@ function start_rocketchat()
 
     if result~=0 then
       print("Failed to start rocketchat on port ${PORT}.")
+      os.exit(1)
     end
+
+    if not dockerwait(rccontainer, "3000") then
+      print("Rocketchat didn't respond in the expected timeframe.")
+      os.exit(1)
+    end
+
 end
 
 function start_caddy()
@@ -81,6 +91,7 @@ function start_caddy()
 
     if result~=0 then
       print("Failed to start caddy on port ${PORT}.")
+      os.exit(1)
     end
 
 -- docker run --rm -p 443:443 -e EMAIL="j@842.be" -e CERT_HOST="dev" -e SERVICE_HOST=dev -e SERVICE_PORT=80 -e MODE="fake" j842/caddy
