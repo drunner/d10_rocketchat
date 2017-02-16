@@ -10,7 +10,8 @@ certvolume="drunner-${SERVICENAME}-certvolume"
 network="drunner-${SERVICENAME}-network"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
-addconfig("PORT","443","The port to run rocketchat on.")
+addconfig("HTTPSPORT","443","The port to run rocketchat on.")
+addconfig("HTTPPORT","80","The port to run rocketchat on.")
 addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
 addconfig("EMAIL","","LetsEncrypt email")
 addconfig("HOSTNAME","","Hostname for the rocket.chat service")
@@ -78,7 +79,8 @@ function start_caddy()
   result=docker("run",
     "--name",caddycontainer,
     "--network=" .. network ,
-    "-p","${PORT}:443",
+    "-p","${HTTPSPORT}:443",
+    "-p","${HTTPPORT}:80",
     "-v", certvolume .. ":/root/.caddy",
     "-e","MODE=${MODE}",
     "-e","EMAIL=${EMAIL}",
