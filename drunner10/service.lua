@@ -101,9 +101,9 @@ function start()
 end
 
 function stop()
-  dockerstop(dbcontainer)
-  dockerstop(rccontainer)
   dockerstop(caddycontainer)
+  dockerstop(rccontainer)
+  dockerstop(dbcontainer)
 end
 
 function uninstall()
