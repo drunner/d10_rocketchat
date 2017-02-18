@@ -13,6 +13,7 @@ addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
 addconfig("EMAIL","","LetsEncrypt email")
 addconfig("DOMAIN","","Domain for the rocket.chat service")
 
+-- docker run --name db123 --network fish -d mongo:3.2 --smallfiles
 function start_mongo()
     -- fire up the mongodb server.
     result=docker("run",
@@ -20,9 +21,7 @@ function start_mongo()
     "--network=" .. network ,
     "-v", dbvolume .. ":/data/db",
     "-d","mongo:3.2",
-    "--smallfiles",
-    "--oplogSize","128",
-    "--replSet","rs0")
+    "--smallfiles")
 
     if result~=0 then
       print("Failed to start mongodb.")
@@ -34,29 +33,16 @@ function start_mongo()
       print("Mongodb didn't respond in the expected timeframe.")
       os.exit(1)
     end
-
-    -- run the mongo replica config
-    result=docker("run","--rm",
-    "--network=" .. network ,
-    "mongo:3.2",
-    "mongo",dbcontainer .. "/rocketchat","--eval",
-    "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
-    )
-
-    if result~=0 then
-      print("Mongodb replica init failed")
-      os.exit(1)
-    end
-
 end
 
+-- docker run --name rocketchat -p 80:3000 --network fish --env MONGO_URL=mongodb://db123/mydb --env ROOT_URL=http://dev -d rocket.chat
 function start_rocketchat()
     -- and rocketchat on port 3000
     result=docker("run",
     "--name",rccontainer,
+    "-p","80:3000",
     "--network=" .. network ,
-    "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
-    "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
+    "--env","MONGO_URL=mongodb://" .. dbcontainer .. "/rocketchat",
     "-d","rocket.chat")
 
     if result~=0 then
@@ -68,7 +54,6 @@ function start_rocketchat()
       print("Rocketchat didn't respond in the expected timeframe.")
       os.exit(1)
     end
-
 end
 
 function start()
