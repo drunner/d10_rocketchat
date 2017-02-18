@@ -2,20 +2,16 @@
 -- based on https://raw.githubusercontent.com/RocketChat/Rocket.Chat/develop/docker-compose.yml
 -- and https://github.com/docker-library/docs/tree/master/rocket.chat
 
-rccontainer="drunner-${SERVICENAME}-rocketchat"
+rccontainer="drunner-${SERVICENAME}"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
-caddycontainer="drunner-${SERVICENAME}-caddy"
 dbvolume="drunner-${SERVICENAME}-database"
 certvolume="drunner-${SERVICENAME}-certvolume"
 network="drunner-${SERVICENAME}-network"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
-addconfig("HTTPSPORT","443","The port to run rocketchat on.")
-addconfig("HTTPPORT","80","The port to run rocketchat on.")
 addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
 addconfig("EMAIL","","LetsEncrypt email")
-addconfig("HOSTNAME","","Hostname for the rocket.chat service")
-
+addconfig("DOMAIN","","Domain for the rocket.chat service")
 
 function start_mongo()
     -- fire up the mongodb server.
@@ -75,45 +71,20 @@ function start_rocketchat()
 
 end
 
-function start_caddy()
-  result=docker("run",
-    "--name",caddycontainer,
-    "--network=" .. network ,
-    "-p","${HTTPSPORT}:443",
-    "-p","${HTTPPORT}:80",
-    "-v", certvolume .. ":/root/.caddy",
-    "-e","MODE=${MODE}",
-    "-e","EMAIL=${EMAIL}",
-    "-e","CERT_HOST=${HOSTNAME}",
-    "-e","SERVICE_HOST="..rccontainer,
-    "-e","SERVICE_PORT=3000",
-    "-d",
-    "j842/caddy"
-  )
-
-    if result~=0 then
-      print("Failed to start caddy on port ${PORT}.")
-      os.exit(1)
-    end
-
--- docker run --rm -p 443:443 -e EMAIL="j@842.be" -e CERT_HOST="dev" -e SERVICE_HOST=dev -e SERVICE_PORT=80 -e MODE="fake" j842/caddy
-
--- bridge to outside world.
---   docker("network","connect","bridge",caddycontainer)
-
-end
-
 function start()
    if (dockerrunning(dbcontainer)) then
       print("rocketchat is already running.")
    else
       start_mongo()
       start_rocketchat()
-      start_caddy()
+      
+      proxyenable("${DOMAIN}",rccontainer,3000,"${EMAIL}","${MODE}")
    end
 end
 
 function stop()
+  proxydisable()
+
   dockerstop(caddycontainer)
   dockerstop(rccontainer)
   dockerstop(dbcontainer)
@@ -136,7 +107,6 @@ end
 function install()
   dockerpull("mongo:3.2")
   dockerpull("rocket.chat")
-  dockerpull("j842/caddy")
   dockercreatevolume(dbvolume)
   dockercreatevolume(certvolume)
   docker("network","create",network)
@@ -165,11 +135,13 @@ end
 function help()
    return [[
    NAME
-      ${SERVICENAME} - Run a rocket.chat server on port ${PORT}.
+      ${SERVICENAME} - Run a rocket.chat server.
+      Configure the HTTPS settings (Domain, LetsEncrypt email) before
+      starting.
 
    SYNOPSIS
       ${SERVICENAME} help             - This help
-      ${SERVICENAME} configure port   - Set port
+      ${SERVICENAME} configure        - Configure domain, email, mode.
       ${SERVICENAME} start            - Make it go!
       ${SERVICENAME} stop             - Stop it
 
