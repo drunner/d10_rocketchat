@@ -79,7 +79,8 @@ function start()
       start_rocketchat()
       
       -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
-      proxyenable("${DOMAIN}",rccontainer,3000,network,"${EMAIL}","${MODE}")
+      -- disable timeouts because rocket.chat keeps websockets open for ages.
+      proxyenable("${DOMAIN}",rccontainer,3000,network,"${EMAIL}","${MODE}",false)
    end
 end
 
@@ -136,7 +137,7 @@ function help()
    SYNOPSIS
       ${SERVICENAME} help             - This help
       ${SERVICENAME} configure        - Configure domain, email, mode.
-      ${SERVICENAME} start            - Make it go!
+      ${SERVICENAME} start            - Start the service
       ${SERVICENAME} stop             - Stop it
 
    DESCRIPTION
