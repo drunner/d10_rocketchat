@@ -85,7 +85,6 @@ end
 function stop()
   proxydisable()
 
-  dockerstop(caddycontainer)
   dockerstop(rccontainer)
   dockerstop(dbcontainer)
 end
