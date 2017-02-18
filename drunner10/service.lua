@@ -40,7 +40,6 @@ function start_rocketchat()
     -- and rocketchat on port 3000
     result=docker("run",
     "--name",rccontainer,
-    "-p","80:3000",
     "--network=" .. network ,
     "--env","MONGO_URL=mongodb://" .. dbcontainer .. "/rocketchat",
     "-d","rocket.chat")
