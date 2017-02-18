@@ -31,7 +31,7 @@ function start_mongo()
 
 -- Wait for port 27017 to come up in dbcontainer (30s timeout on the given network)
     if not dockerwait(dbcontainer, "27017") then
-      print("Mongodb didn't seem to start?")
+      print("Mongodb didn't respond in the expected timeframe.")
       os.exit(1)
     end
 
@@ -78,7 +78,8 @@ function start()
       start_mongo()
       start_rocketchat()
       
-      proxyenable("${DOMAIN}",rccontainer,3000,"${EMAIL}","${MODE}")
+      -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
+      proxyenable("${DOMAIN}",rccontainer,3000,network,"${EMAIL}","${MODE}")
    end
 end
 
@@ -99,7 +100,6 @@ function obliterate()
    stop()
    docker("network","rm",network)
    dockerdeletevolume(dbvolume)
-   dockerdeletevolume(certvolume)
 end
 
 -- install
@@ -107,9 +107,7 @@ function install()
   dockerpull("mongo:3.2")
   dockerpull("rocket.chat")
   dockercreatevolume(dbvolume)
-  dockercreatevolume(certvolume)
   docker("network","create",network)
---  start() ?
 end
 
 function backup()
@@ -117,7 +115,6 @@ function backup()
    docker("pause",dbcontainer)
 
    dockerbackup(dbvolume)
-   dockerbackup(certvolume)
 
    docker("unpause",dbcontainer)
    docker("unpause",rccontainer)
@@ -125,8 +122,6 @@ end
 
 function restore()
    dockerrestore(dbvolume)
-   dockerrestore(certvolume)
-
 -- set mode to fake for safety!
    dconfig_set("MODE","fake")
 end
