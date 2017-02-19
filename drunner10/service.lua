@@ -13,6 +13,11 @@ addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
 addconfig("EMAIL","","LetsEncrypt email")
 addconfig("DOMAIN","","Domain for the rocket.chat service")
 
+-- overrideable.
+sMode="${MODE}"
+sEmail="${EMAIL}"
+sDomain="${DOMAIN}"
+
 function start_mongo()
     -- fire up the mongodb server.
     result=docker("run",
@@ -80,15 +85,15 @@ function start()
       
       -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
       -- disable timeouts because rocket.chat keeps websockets open for ages.
-      proxyenable("${DOMAIN}",rccontainer,3000,network,"${EMAIL}","${MODE}",false)
+      proxyenable(sDomain,rccontainer,3000,network,sEmail,sMode,false)
    end
 end
 
 function stop()
-  proxydisable()
+   proxydisable()
 
-  dockerstop(rccontainer)
-  dockerstop(dbcontainer)
+   dockerstop(rccontainer)
+   dockerstop(dbcontainer)
 end
 
 function uninstall()
@@ -105,10 +110,10 @@ end
 
 -- install
 function install()
-  dockerpull("mongo:3.2")
-  dockerpull("rocket.chat")
-  dockercreatevolume(dbvolume)
-  docker("network","create",network)
+   dockerpull("mongo:3.2")
+   dockerpull("rocket.chat")
+   dockercreatevolume(dbvolume)
+   docker("network","create",network)
 end
 
 function backup()
@@ -122,9 +127,24 @@ function backup()
 end
 
 function restore()
+   dockerpull("mongo:3.2")
+   dockerpull("rocket.chat")
    dockerrestore(dbvolume)
+   docker("network","create",network)
+
 -- set mode to fake for safety!
    dconfig_set("MODE","fake")
+end
+
+function selftest()
+   sDomain="travis"
+   sEmail="j@842.be"
+   sMode="fake"
+   print("Starting...")
+   start()
+   print("Stopping...")
+   stop()
+   print("Self test complete.")
 end
 
 function help()

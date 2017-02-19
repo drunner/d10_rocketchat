@@ -1,3 +1,4 @@
+# This yml file can be used to test any dService!
 language: cpp
 sudo: required
 dist: trusty
@@ -7,11 +8,8 @@ before_install:
    - export PATH=$PATH:$HOME/.drunner/bin/
 
 script:
-   - drunner install . rocketchat
-   - ddev test rocketchat
-   - rocketchat help
-   - rocketchat start
-   - rocketchat stop
-   - drunner uninstall rocketchat
-   - drunner obliterate rocketchat
+   - ddev build selftest
+   - ddev test selftest
+   - drunner uninstall selftest
+   - drunner obliterate selftest
    
