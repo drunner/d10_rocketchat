@@ -20,7 +20,7 @@ sDomain="${DOMAIN}"
 
 function start_mongo()
     -- fire up the mongodb server.
-    result=docker("run",
+    result,output=docker("run",
     "--name",dbcontainer,
     "--network=" .. network ,
     "-v", dbvolume .. ":/data/db",
@@ -28,17 +28,8 @@ function start_mongo()
     "--smallfiles",
     "--oplogSize","128",
     "--replSet","rs0")
-
-    if result~=0 then
-      print("Failed to start mongodb.")
-      os.exit(1)
-    end
-
--- Wait for port 27017 to come up in dbcontainer (30s timeout on the given network)
-    if not dockerwait(dbcontainer, "27017") then
-      print("Mongodb didn't respond in the expected timeframe.")
-      os.exit(1)
-    end
+    result or die("Failed to start mongodb : "..output)
+    dockerwait(dbcontainer, "27017") or die("Mongodb didn't respond on port 27017 in the expected timeframe.")
 
     -- run the mongo replica config
     result=docker("run","--rm",
@@ -47,50 +38,35 @@ function start_mongo()
     "mongo",dbcontainer .. "/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
     )
-
-    if result~=0 then
-      print("Mongodb replica init failed")
-      os.exit(1)
-    end
-
+    result or die("Mongodb replica init failed")
 end
 
 function start_rocketchat()
     -- and rocketchat on port 3000
-    result=docker("run",
+    result,output=docker("run",
     "--name",rccontainer,
     "--network=" .. network ,
     "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
     "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
     "-d","rocket.chat")
 
-    if result~=0 then
-      print("Failed to start rocketchat on port ${PORT}.")
-      os.exit(1)
-    end
-
-    if not dockerwait(rccontainer, "3000") then
-      print("Rocketchat didn't respond in the expected timeframe.")
-      os.exit(1)
-    end
-
+    result or die("Failed to start rocketchat on port ${PORT} : "..output)
+    dockerwait(rccontainer, "3000") or die("Rocketchat didn't respond in the expected timeframe.")
 end
 
 function start()
-   if (dockerrunning(dbcontainer)) then
-      print("rocketchat is already running.")
-   else
-      start_mongo()
-      start_rocketchat()
+   isdockerrunning(dbcontainer) and die("rocketchat is already running.")
+
+   start_mongo()
+   start_rocketchat()
       
-      -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
-      -- disable timeouts because rocket.chat keeps websockets open for ages.
-      proxyenable(sDomain,rccontainer,3000,network,sEmail,sMode,false)
-   end
+   -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
+   -- disable timeouts because rocket.chat keeps websockets open for ages.
+   proxyenable(sDomain,rccontainer,3000,network,sEmail,sMode,false) or die("Couldn't enable proxy")
 end
 
 function stop()
-   proxydisable()
+   proxydisable() or print("Couldn't disable proxy")
 
    dockerstop(rccontainer)
    dockerstop(dbcontainer)
@@ -98,28 +74,30 @@ end
 
 function uninstall()
    stop()
-   docker("network","rm",network)
+   docker("network","rm",network) or print("Unable to remove network")
    -- we retain the database volume
 end
 
 function obliterate()
    stop()
-   docker("network","rm",network)
-   dockerdeletevolume(dbvolume)
+   docker("network","rm",network) or print("Unable to remove network")
+   dockerdeletevolume(dbvolume) or print("Unable to remove docker volume "..dbvolume)
 end
 
 -- install
 function install()
    dockerpull("mongo:3.2")
    dockerpull("rocket.chat")
-   dockercreatevolume(dbvolume)
-   docker("network","create",network)
+   dockercreatevolume(dbvolume) or die("Couldn't create docker volume "..dbvolume)
+   result,output = docker("network","create",network)
+   result or die("Couldn't create network "..network.." : "..output)
 end
 
 function backup()
    docker("pause",rccontainer)
    docker("pause",dbcontainer)
 
+GAHHH THIS RETURNS A CRESULT NOT TRUE/FALSE.
    dockerbackup(dbvolume)
 
    docker("unpause",dbcontainer)
@@ -130,10 +108,12 @@ function restore()
    dockerpull("mongo:3.2")
    dockerpull("rocket.chat")
    dockerrestore(dbvolume)
-   docker("network","create",network)
+
+   result,output = docker("network","create",network)
+   result or die("Couldn't create network "..network.." : "..output)
 
 -- set mode to fake for safety!
-   dconfig_set("MODE","fake")
+   setconfig("MODE","fake")
 end
 
 function selftest()
