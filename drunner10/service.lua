@@ -6,7 +6,7 @@ rccontainer="drunner-${SERVICENAME}"
 dbcontainer="drunner-${SERVICENAME}-mongodb"
 dbvolume="drunner-${SERVICENAME}-database"
 certvolume="drunner-${SERVICENAME}-certvolume"
-network="drunner-${SERVICENAME}-network"
+network="drunnerproxy"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
@@ -22,7 +22,7 @@ function start_mongo()
     -- fire up the mongodb server.
     result,output=docker("run",
     "--name",dbcontainer,
-    "--network=" .. network ,
+    "--network=" .. network,
     "-v", dbvolume .. ":/data/db",
     "-d","mongo:3.2",
     "--smallfiles",
@@ -62,7 +62,7 @@ function start()
       
    -- use dRunner's built-in proxy to expose rocket.chat over SSL (port 443) on host.
    -- disable timeouts because rocket.chat keeps websockets open for ages.
-   dieunless( proxyenable(sDomain,rccontainer,3000,network,sEmail,sMode,false), "Couldn't enable proxy")
+   dieunless( proxyenable(sDomain,rccontainer,3000,sEmail,sMode,false), "Couldn't enable proxy")
 end
 
 function stop()
@@ -74,13 +74,11 @@ end
 
 function uninstall()
    stop()
-   msgunless( docker("network","rm",network), "Unable to remove network") 
    -- we retain the database volume
 end
 
 function obliterate()
    stop()
-   msgunless( docker("network","rm",network), "Unable to remove network")
    msgunless( dockerdeletevolume(dbvolume), "Unable to remove docker volume "..dbvolume)
 end
 
@@ -89,8 +87,6 @@ function install()
    dockerpull("mongo:3.2")
    dockerpull("rocket.chat")
    dieunless( dockercreatevolume(dbvolume), "Couldn't create docker volume "..dbvolume)
-   result,output = docker("network","create",network)
-   dieunless( result, "Couldn't create network "..network.." : "..output)
 end
 
 function backup()
@@ -107,10 +103,7 @@ function restore()
    dockerpull("mongo:3.2")
    dockerpull("rocket.chat")
    dieunless( dockerrestore(dbvolume), "Couldn't restore "..dbvolume)
-
-   result,output = docker("network","create",network)
-   dieunless(result, "Couldn't create network "..network.." : "..output)
-
+   
 -- set mode to fake for safety!
    setconfig("MODE","fake")
 end
