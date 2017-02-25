@@ -55,7 +55,7 @@ function start_rocketchat()
 end
 
 function start()
-   isdockerrunning(dbcontainer) and die("rocketchat is already running.")
+   dieif( isdockerrunning(dbcontainer), "rocketchat is already running.")
 
    start_mongo()
    start_rocketchat()
@@ -66,7 +66,7 @@ function start()
 end
 
 function stop()
-   if not proxydisable() then print("Couldn't disable proxy") end
+   msgunless(proxydisable(),"Couldn't disable proxy") 
 
    dockerstop(rccontainer)
    dockerstop(dbcontainer)
@@ -74,7 +74,7 @@ end
 
 function uninstall()
    stop()
-   msgunless( docker("network","rm",network), "Unable to remove network") end
+   msgunless( docker("network","rm",network), "Unable to remove network") 
    -- we retain the database volume
 end
 
