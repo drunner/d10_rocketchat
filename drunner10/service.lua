@@ -51,7 +51,7 @@ function start_rocketchat()
     "-d","rocket.chat")
 
     dieunless(result, "Failed to start rocketchat on port ${PORT} : "..output)
-    dieunless(dockerwait(rccontainer, "3000"), "Rocketchat didn't respond in the expected timeframe.")
+    dieunless(dockerwait(rccontainer, "3000", 120), "Rocketchat didn't respond in the expected timeframe.")
 end
 
 function start()
