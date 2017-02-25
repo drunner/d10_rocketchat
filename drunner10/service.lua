@@ -1,4 +1,10 @@
 -- drunner service configuration for ROCKETCHAT
+
+-- requires use of dRunner's proxy, which means it's only useful for
+-- situations where you expose the service to the internet 
+-- (proxy currently supports LetsEncrypt or auto generated self-signed certs -
+--  not certs you control)
+
 -- based on https://raw.githubusercontent.com/RocketChat/Rocket.Chat/develop/docker-compose.yml
 -- and https://github.com/docker-library/docs/tree/master/rocket.chat
 
@@ -7,6 +13,9 @@ dbcontainer="drunner-${SERVICENAME}-mongodb"
 dbvolume="drunner-${SERVICENAME}-database"
 certvolume="drunner-${SERVICENAME}-certvolume"
 network="drunnerproxy"
+
+cmongo="mongo:3.2"
+crocket="rocket.chat:0.52.0"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
@@ -24,7 +33,7 @@ function start_mongo()
     "--name",dbcontainer,
     "--network=" .. network,
     "-v", dbvolume .. ":/data/db",
-    "-d","mongo:3.2",
+    "-d",cmongo,
     "--smallfiles",
     "--oplogSize","128",
     "--replSet","rs0")
@@ -34,7 +43,7 @@ function start_mongo()
     -- run the mongo replica config
     result=docker("run","--rm",
     "--network=" .. network ,
-    "mongo:3.2",
+    cmongo,
     "mongo",dbcontainer .. "/rocketchat","--eval",
     "rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ]})"
     )
@@ -48,7 +57,7 @@ function start_rocketchat()
     "--network=" .. network ,
     "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
     "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
-    "-d","rocket.chat")
+    "-d",crocket)
 
     dieunless(result, "Failed to start rocketchat on port ${PORT} : "..output)
     dieunless(dockerwait(rccontainer, "3000", 120), "Rocketchat didn't respond in the expected timeframe.")
@@ -84,8 +93,8 @@ end
 
 -- install
 function install()
-   dockerpull("mongo:3.2")
-   dockerpull("rocket.chat")
+   dockerpull(cmongo)
+   dockerpull(crocket)
    dieunless( dockercreatevolume(dbvolume), "Couldn't create docker volume "..dbvolume)
 end
 
@@ -100,8 +109,8 @@ function backup()
 end
 
 function restore()
-   dockerpull("mongo:3.2")
-   dockerpull("rocket.chat")
+   dockerpull(cmongo)
+   dockerpull(crocket)
    dieunless( dockerrestore(dbvolume), "Couldn't restore "..dbvolume)
    
 -- set mode to fake for safety!
