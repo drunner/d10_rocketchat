@@ -15,12 +15,13 @@ certvolume="drunner-${SERVICENAME}-certvolume"
 network="drunnerproxy"
 
 cmongo="mongo:3.2"
-crocket="rocket.chat:0.52.0"
+crocket="rocket.chat:0.55.1"
 
 -- addconfig( VARIABLENAME, DEFAULTVALUE, DESCRIPTION )
 addconfig("MODE","fake","LetsEncrypt mode: fake, staging, production")
 addconfig("EMAIL","","LetsEncrypt email")
 addconfig("DOMAIN","","Domain for the rocket.chat service")
+addconfig("TIMEZONE","Pacific/Auckland","Timezone for Rocket.chat")
 
 -- overrideable.
 sMode="${MODE}"
@@ -57,6 +58,7 @@ function start_rocketchat()
     "--network=" .. network ,
     "--env","MONGO_URL=mongodb://" .. dbcontainer .. ":27017/rocketchat",
     "--env","MONGO_OPLOG_URL=mongodb://" .. dbcontainer .. ":27017/local",
+    "--env","TZ=${TIMEZONE}",
     "-d",crocket)
 
     dieunless(result, "Failed to start rocketchat on port ${PORT} : "..output)
